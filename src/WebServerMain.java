@@ -10,11 +10,10 @@ public class WebServerMain {
             String path = args[0];
             int port = parsePort(args[1]);
             if (port != -1) {
-
+                WebServer server = new WebServer(path,port);
             } else {
                 System.out.println("Invalid port provided");
             }
-
         } else {
             System.out.println("Usage: java WebServerMain <document_root> <port>");
 
