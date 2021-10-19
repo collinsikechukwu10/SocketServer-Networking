@@ -6,22 +6,23 @@ public class WebServer {
 
 
     private ServerSocket ss; // listen for client connection requests on this server socket
+    private final static LoggerService loggerService = new LoggerService(WebServer.class.getName());
 
     public WebServer(String staticFilePath, int port) {
         try {
             ss = new ServerSocket(port);
-            System.out.println("Server started ... listening on port " + port + " ...");
+            loggerService.info("Server started, listening on port [" + port + "]");
             while (true) {
                 // waits until client requests a connection, then returns connection (socket)
                 Socket conn = ss.accept();
-                System.out.println("Server got new connection request from " + conn.getInetAddress());
+                loggerService.info("New connection found from [" + conn.getInetAddress() + "]");
 
                 // create new handler for this connection
-                RequestHandler ch = new RequestHandler(conn);
+                RequestHandler ch = new RequestHandler(conn, staticFilePath);
                 ch.start(); // start handler thread
             }
         } catch (IOException ioe) {
-            System.out.println("Ooops " + ioe.getMessage());
+            loggerService.error("Error ", ioe);
         }
     }
 }
