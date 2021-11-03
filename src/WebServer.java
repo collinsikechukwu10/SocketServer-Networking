@@ -6,7 +6,7 @@ public class WebServer {
 
 
     private ServerSocket ss; // listen for client connection requests on this server socket
-    private final static LoggerService loggerService = new LoggerService(WebServer.class.getName());
+    private final static LoggerService loggerService = LoggerService.getInstance();
 
     public WebServer(String staticFilePath, int port) {
         try {
@@ -18,7 +18,7 @@ public class WebServer {
                 loggerService.info("New connection found from [" + conn.getInetAddress() + "]");
 
                 // create new handler for this connection
-                RequestHandler ch = new RequestHandler(conn, staticFilePath);
+                ConnectionHandler ch = new ConnectionHandler(conn, staticFilePath);
                 ch.start(); // start handler thread
             }
         } catch (IOException ioe) {
