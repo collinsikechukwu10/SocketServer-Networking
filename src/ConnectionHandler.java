@@ -1,17 +1,26 @@
 import enums.RequestMethod;
 import enums.ResponseCode;
-import exceptions.HttpException;
-import exceptions.InternalServerErrorException;
-import exceptions.RequestNotSupportedException;
-import exceptions.ResourceNotFoundException;
+import exceptions.*;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Objects;
 
+
+/**
+ * Connection Handler class.
+ *
+ * @author 210032007
+ */
 public class ConnectionHandler extends Thread {
     private BufferedReader br;
     private BufferedOutputStream bs;
@@ -21,7 +30,12 @@ public class ConnectionHandler extends Thread {
     private final Path baseStaticFilePath;
     private final Socket conn;
 
-
+    /**
+     * Constructor specifying socket connection and file path used to serve the static pages.
+     *
+     * @param conn           socket connection
+     * @param staticFilePath file path serving the static pages
+     */
     public ConnectionHandler(Socket conn, String staticFilePath) {
         super();
         this.conn = conn;
@@ -34,14 +48,11 @@ public class ConnectionHandler extends Thread {
         baseStaticFilePath = Paths.get("").toAbsolutePath().resolve(staticFilePath).normalize();
     }
 
-    // run method is invoked when
-
     /**
-     * Run method invoked the Thread's start method (ch.start(); in WebServer class) is invoked
+     * Run method invoked the Thread's start method (ch.start(); in WebServer class) is invoked.
      */
     @Override
     public void run() {
-        loggerService.info("Thread started for connection...");
         processRequest();
 
     }
@@ -51,21 +62,22 @@ public class ConnectionHandler extends Thread {
      */
     private void processRequest() {
         try {
-            loggerService.info("======Request Received=====");
+            loggerService.info("Request Received: [" + LocalDateTime.now() + "]");
             ArrayList<String> requestStringLines = requestHandler.retrieveRequestString(br);
             // extract the headers and data [for post data mostly]
             Map<String, String> requestHeaders = requestHandler.extractRequestHeaders(requestStringLines);
-            String data = requestHandler.extractRequestData();
             // now process the request using the response handler
-            RequestMethod requestMethod = RequestMethod.valueOf(requestHeaders.getOrDefault(Headers.RequestMethod, "UNDEFINED").toUpperCase());
-            loggerService.info("Processing [" + requestMethod + "] request");
+            RequestMethod requestMethod = RequestMethod.resolveRequestMethod(requestHeaders.getOrDefault(Headers.REQUEST_METHOD, "UNDEFINED"));
+            loggerService.info("Request Type: [" + requestMethod + "]");
 
             if (requestMethod == RequestMethod.GET) {
                 processGetRequest(requestHeaders);
             } else if (requestMethod == RequestMethod.HEAD) {
                 processHeadRequest(requestHeaders);
             } else if (requestMethod == RequestMethod.POST) {
-                processPostRequest(requestHeaders, data);
+                processPostRequest(requestHeaders);
+            } else if (requestMethod == RequestMethod.DELETE) {
+                processDeleteRequest(requestHeaders);
             } else {
                 throw new RequestNotSupportedException();
             }
@@ -83,49 +95,91 @@ public class ConnectionHandler extends Thread {
      * Processes a HEAD request.
      *
      * @param headers extracted request headers
-     * @throws Exception
+     * @throws HttpException any http exception
+     * @throws IOException   occurs if streaming issues exists
      */
     private void processHeadRequest(Map<String, String> headers) throws HttpException, IOException {
-        String relativeUrl = headers.getOrDefault(Headers.RelativeUrl, null);
+        String relativeUrl = headers.getOrDefault(Headers.RELATIVE_URL, null);
         if (relativeUrl != null) {
             File file = requestHandler.findFile(baseStaticFilePath.toAbsolutePath().toString(), relativeUrl);
             if (file.exists() && requestHandler.isAllowedFileExtensions(file.getPath())) {
                 responseHandler.generateResponse(bs, RequestMethod.HEAD, ResponseCode.Success, file);
-            } else {
-                throw new ResourceNotFoundException(RequestMethod.HEAD);
+                return;
             }
         }
+        throw new ResourceNotFoundException(RequestMethod.HEAD);
     }
 
     /**
      * Processes a GET request.
      *
      * @param headers extracted request headers
-     * @throws Exception
+     * @throws HttpException any http exception
+     * @throws IOException   occurs if streaming issues exists
      */
-    private void processGetRequest(Map<String, String> headers) throws Exception {
-        String relativeUrl = headers.getOrDefault(Headers.RelativeUrl, null);
+    private void processGetRequest(Map<String, String> headers) throws HttpException, IOException {
+        String relativeUrl = headers.getOrDefault(Headers.RELATIVE_URL, null);
         if (relativeUrl != null) {
             File file = requestHandler.findFile(baseStaticFilePath.toAbsolutePath().toString(), relativeUrl);
             if (file != null && file.exists() && requestHandler.isAllowedFileExtensions(file.getPath())) {
                 loggerService.info("Getting file [" + file.getPath() + "]");
-                responseHandler.generateResponse(bs, RequestMethod.GET, ResponseCode.Success, file);// get headers
-            } else {
-                throw new ResourceNotFoundException(RequestMethod.GET);
+                responseHandler.generateResponse(bs, RequestMethod.GET, ResponseCode.Success, file);
+                return;
             }
         }
+        throw new ResourceNotFoundException(RequestMethod.GET);
     }
 
     /**
      * Processes a POST request.
+     * This only works for post request that have the `application/x-www-form-urlencoded` content type.
      *
-     * @param headers
-     * @param data
+     * @param headers extracted request headers
+     * @throws HttpException any http exception
+     * @throws IOException   occurs if streaming issues exists
      */
-    public void processPostRequest(Map<String, String> headers, String data) {
-
+    public void processPostRequest(Map<String, String> headers) throws HttpException, IOException {
+        // use content type to ascertain how you process the data
+        if (Objects.equals(headers.get(Headers.CONTENT_TYPE), "application/x-www-form-urlencoded")) {
+            String data = requestHandler.extractRequestData(br);
+            loggerService.info("===Post Request Data===");
+            loggerService.info(data);
+            loggerService.info("=======================");
+            responseHandler.generateResponse(bs, RequestMethod.POST, ResponseCode.Success, null);
+        } else {
+            throw new BadRequestException(RequestMethod.POST);
+        }
     }
 
+    /**
+     * Processes a DELETE request.
+     *
+     * @param headers extracted request headers
+     * @throws HttpException any http exception
+     * @throws IOException   occurs if streaming issues exists
+     */
+    public void processDeleteRequest(Map<String, String> headers) throws HttpException, IOException {
+        String relativeUrl = headers.getOrDefault(Headers.RELATIVE_URL, null);
+        if (relativeUrl != null) {
+            File file = requestHandler.findFile(baseStaticFilePath.toAbsolutePath().toString(), relativeUrl);
+            if (file != null && file.exists()) {
+                if (file.delete()) {
+                    // since the response message does not include any representation like a html page
+                    // describing the status, we respond with a 204 staus code instead of the normal 200
+                    // [https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE]
+                    responseHandler.generateResponse(bs, RequestMethod.DELETE, ResponseCode.SuccessNoContent, null);
+                    return;
+                } else {
+                    throw new InternalServerErrorException(RequestMethod.DELETE, "Error deleting file requested");
+                }
+            }
+        }
+        throw new ResourceNotFoundException(RequestMethod.DELETE);
+    }
+
+    /**
+     * Cleans up the request and closes the connections.
+     */
     private void cleanup() {
         loggerService.info("Closing connection...");
         try {

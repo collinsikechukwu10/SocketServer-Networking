@@ -10,13 +10,18 @@ import enums.RequestMethod;
  */
 public class RequestNotSupportedException extends HttpException {
     /**
+     * Request not supported status code.
+     */
+    private static final int REQUEST_NOT_SUPPORTED_STATUS_CODE = 501;
+
+    /**
      * Constructor specifying request method and error message.
      *
      * @param requestMethod request method
      * @param s             error message
      */
     public RequestNotSupportedException(RequestMethod requestMethod, String s) {
-        super(requestMethod, 501, s);
+        super(requestMethod, REQUEST_NOT_SUPPORTED_STATUS_CODE, s);
     }
 
     /**

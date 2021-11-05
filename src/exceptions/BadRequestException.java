@@ -3,15 +3,15 @@ package exceptions;
 import enums.RequestMethod;
 
 /**
- * Internal Server Error Exception class.
+ * Bad Request Exception class.
  *
  * @author 210032207
  */
-public class InternalServerErrorException extends HttpException {
+public class BadRequestException extends HttpException {
     /**
      * Internal server error status code.
      */
-    private static final int INTERNAL_SERVER_ERROR_STATUS_CODE = 500;
+    private static final int BAD_REQUEST_STATUS_CODE = 400;
 
     /**
      * Constructor specifying request method and error message.
@@ -19,8 +19,8 @@ public class InternalServerErrorException extends HttpException {
      * @param requestMethod request method
      * @param s             error message
      */
-    public InternalServerErrorException(RequestMethod requestMethod, String s) {
-        super(requestMethod, INTERNAL_SERVER_ERROR_STATUS_CODE, s);
+    public BadRequestException(RequestMethod requestMethod, String s) {
+        super(requestMethod, BAD_REQUEST_STATUS_CODE, s);
     }
 
     /**
@@ -28,15 +28,15 @@ public class InternalServerErrorException extends HttpException {
      *
      * @param requestMethod request method
      */
-    public InternalServerErrorException(RequestMethod requestMethod) {
-        this(requestMethod, "Internal Server Error");
+    public BadRequestException(RequestMethod requestMethod) {
+        this(requestMethod, "Bad Request Error");
     }
 
     /**
      * Constructor with no arguments.
      * Sets request method to undefined
      */
-    public InternalServerErrorException() {
+    public BadRequestException() {
         this(RequestMethod.UNDEFINED);
     }
 }

@@ -5,7 +5,7 @@ import enums.RequestMethod;
 /**
  * Http Exception Class.
  * This is the base exception for all implemented http exceptions.
- *
+ * Do not use this class directly, Subclass it using the type of error.
  * @author 210032207
  */
 public class HttpException extends Exception {

@@ -1,9 +1,18 @@
 import java.io.File;
 import java.nio.file.Paths;
 
+/**
+ * Web Server Main class.
+ *
+ * @author 210032207
+ */
 public class WebServerMain {
-    private final static LoggerService loggerService = LoggerService.getInstance();
 
+    /**
+     * This is the main entrypoint of the program.
+     *
+     * @param args command line arguments
+     */
     public static void main(String[] args) {
         //  Multithreading – support multiple concurrent client connection requests up to a specified limit
         if (args.length != 0) {
@@ -11,18 +20,24 @@ public class WebServerMain {
             int port = resolvePort(args[1]);
             if (port > 0) {
                 if (staticFilePathExists(path)) {
-                    WebServer server = new WebServer(path, port);
+                    new WebServer(path, port);
                 } else {
-                    loggerService.error("File path provided does not exist");
+                    System.out.println("File path provided does not exist");
                 }
             } else {
-                loggerService.error("Invalid port provided");
+                System.out.println("Invalid port provided");
             }
         } else {
-            loggerService.error("Usage: java WebServerMain <document_root> <port>");
+            System.out.println("Usage: java WebServerMain <document_root> <port>");
         }
     }
 
+    /**
+     * Resolves the http server port you want to allocate from the command line argument.
+     *
+     * @param portString string containing port
+     * @return port number
+     */
     private static int resolvePort(String portString) {
         try {
             return Integer.parseInt(portString);

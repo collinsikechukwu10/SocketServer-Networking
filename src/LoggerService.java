@@ -1,58 +1,87 @@
 import java.io.IOException;
-import java.util.logging.*;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import java.util.logging.Level;
 
 /**
- * A sloppy singleton implementation of the logger can be made as
- * the Javadoc for Logger states that "All methods on Logger are multi-thread safe."
+ * Logger Service class.
+ * A sloppy singleton implementation of a logging system as
+ * the Javadoc for Logger states that "All methods on Logger are multi-thread safe.".
+ *
+ * @author 210032207
  */
 public class LoggerService {
 
-    private static Logger LOGGER;
-    private static LoggerService INSTANCE;
+    private static Logger logger;
+    private static LoggerService instance;
 
-
+    /**
+     * Logger constructor.
+     * This is used to create the logger and handlers.
+     */
     public LoggerService() {
-        LOGGER = Logger.getLogger("Java Server");
+        logger = Logger.getLogger("Java Server");
         SimpleFormatter formatter = new SimpleFormatter();
         try {
-            FileHandler fileHandler = new FileHandler(ServerConfig.LogFilePath, true);
+            FileHandler fileHandler = new FileHandler(ServerConfig.LOG_FILE_PATH, true);
             fileHandler.setFormatter(formatter);
             fileHandler.setLevel(Level.FINE);
-            LOGGER.addHandler(fileHandler);
+            logger.addHandler(fileHandler);
         } catch (IOException e) {
             // if error creating file, then create a standard console handler
             ConsoleHandler consoleHandler = new ConsoleHandler();
             consoleHandler.setFormatter(formatter);
             consoleHandler.setLevel(Level.FINE);
-            LOGGER.addHandler(consoleHandler);
+            logger.addHandler(consoleHandler);
         }
-        LOGGER.setLevel(Level.FINE);
+        logger.setLevel(Level.FINE);
 
         //Part of making this class a singleton
-        INSTANCE = this;
+        instance = this;
 
     }
 
+    /**
+     * This is the main entrypoint for other classes to use the logger as this is a singleton class.
+     *
+     * @return loggerService class
+     */
     public static LoggerService getInstance() {
-        if (INSTANCE == null){
-            INSTANCE = new LoggerService();
+        if (instance == null) {
+            instance = new LoggerService();
         }
-        return INSTANCE;
+        return instance;
     }
 
+    /**
+     * Log message at INFO level.
+     *
+     * @param msg message
+     */
     public void info(String msg) {
-//        this.LOGGER.log(Level.INFO, msg);
+        logger.log(Level.INFO, msg);
         System.out.println(msg);
     }
 
+    /**
+     * Log message at ERROR level.
+     *
+     * @param msg message
+     * @param e   Exception class, incase you want to log the stacktrace of the exception
+     */
     public void error(String msg, Exception e) {
-        System.out.println(msg + " " + e.getMessage());
-        e.printStackTrace();
-//        this.LOGGER.log(Level.SEVERE, msg, e);
+
+        logger.log(Level.SEVERE, msg, e);
     }
 
+    /**
+     * Log message at ERROR level.
+     *
+     * @param msg message
+     */
     public void error(String msg) {
-        System.out.println(msg);
-//        LOGGER.log(Level.SEVERE, msg);
+        logger.log(Level.SEVERE, msg);
     }
 }

@@ -3,11 +3,15 @@ package exceptions;
 import enums.RequestMethod;
 
 /**
- * Resource Not Found Exception class
+ * Resource Not Found Exception class.
  *
  * @author 210032207
  */
 public class ResourceNotFoundException extends HttpException {
+    /**
+     * Resource not found status code.
+     */
+    private static final int RESOURCE_NOT_FOUND_STATUS_CODE = 404;
 
     /**
      * Constructor specifying request method and error message.
@@ -16,7 +20,7 @@ public class ResourceNotFoundException extends HttpException {
      * @param s             error message
      */
     public ResourceNotFoundException(RequestMethod requestMethod, String s) {
-        super(requestMethod, 404, s);
+        super(requestMethod, RESOURCE_NOT_FOUND_STATUS_CODE, s);
     }
 
     /**

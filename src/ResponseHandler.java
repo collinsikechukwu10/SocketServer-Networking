@@ -18,17 +18,18 @@ import java.util.Map;
  * @author 210032207
  */
 public class ResponseHandler {
-    private final static String HEADER_SEPERATOR = "\r\n";
+    private static final String HEADER_SEPERATOR = "\r\n";
     private final LoggerService loggerService = LoggerService.getInstance();
+    private static final String ERROR_FILES_PATH = "../www/error/";
 
     /**
-     * Default constructor
+     * Default constructor.
      */
     public ResponseHandler() {
     }
 
     /**
-     * Deduce the mime type of a file using its file extension.
+     * Deduce the mimetype of a file using its file extension.
      *
      * @param file file object to check
      * @return mimetype of the file
@@ -56,37 +57,29 @@ public class ResponseHandler {
     }
 
     /**
-     * Generate generic response headers.
+     * Append all response headers (including those related to a requested resource like files).
+     * For files, it adds the size and the mime type (if it exists).
      *
-     * @return map of response headers
+     * @param file file object to generate headers for
+     * @return response headers
      */
-    public Map<String, String> generateResponseHeaders() {
-        loggerService.info("Preparing headers for response");
+    public Map<String, String> generateResponseHeaders(File file) {
         Map<String, String> headers = new LinkedHashMap<>();
-        headers.put(Headers.Server, "Simple Java Http Server");
+        headers.put(Headers.SERVER, "Simple Java Http Server");
+        if (file != null) {
+            String mimeType = extractMimeType(file);
+            if (mimeType != null) {
+                headers.put(Headers.CONTENT_TYPE, mimeType);
+            }
+            headers.put(Headers.CONTENT_SIZE, String.valueOf(file.length()));
+        }
         return headers;
 
     }
 
-    /**
-     * Append headers related to a file.
-     * This mostly focuses on the file size and the mime type.
-     *
-     * @param headers map of generic response headers
-     * @param file    file object to generate headers for
-     */
-    public void appendFileHeaders(Map<String, String> headers, File file) {
-        if (file != null) {
-            String mimeType = extractMimeType(file);
-            if (mimeType != null) {
-                headers.put(Headers.ContentType, mimeType);
-            }
-            headers.put(Headers.ContentSize, String.valueOf(file.length()));
-        }
-    }
 
     /**
-     * Converts headers into a http format
+     * Converts headers into a http format.
      *
      * @param responseCode response code enum for the response
      * @param headers      headers to convert
@@ -95,8 +88,9 @@ public class ResponseHandler {
     public String formatHeaders(ResponseCode responseCode, Map<String, String> headers) {
         StringBuilder responseBuilder = new StringBuilder();
         responseBuilder.append(responseCode.getStatusResponse()).append(HEADER_SEPERATOR);
+        // convert header map to its string format
         headers.forEach((key, val) -> {
-            responseBuilder.append(key + ": " + val + HEADER_SEPERATOR);
+            responseBuilder.append(key).append(": ").append(val).append(HEADER_SEPERATOR);
         });
         return responseBuilder.append(HEADER_SEPERATOR).toString();
     }
@@ -111,19 +105,17 @@ public class ResponseHandler {
      * @throws IOException if error is encountered during writes to output stream
      */
     public void generateResponse(OutputStream oi, RequestMethod requestMethod, ResponseCode responseCode, File file) throws IOException {
-        Map<String, String> headers = generateResponseHeaders();
-        appendFileHeaders(headers, file);
+        Map<String, String> headers = generateResponseHeaders(file);
         // send headers to user
         byte[] headerBytes = formatHeaders(responseCode, headers).getBytes();
         oi.write(headerBytes);
-//        oi.flush();
-        if (requestMethod != RequestMethod.HEAD) {
-            // send file if its exist
+        if (requestMethod != RequestMethod.HEAD && file != null) {
+            // send file if its exist and request is not a head request
             FileInputStream fileInputStream = new FileInputStream(file);
             oi.write(fileInputStream.readAllBytes());
-
         }
         oi.flush();
+        loggerService.info("Response Code: [" + responseCode.getCode() + "]");
     }
 
     /**
@@ -135,21 +127,19 @@ public class ResponseHandler {
     public void generateErrorResponse(OutputStream oi, HttpException ex) {
         try {
             loggerService.error("Error", ex);
-            loggerService.info("Processing error...");
-            Path errorFilePath = Paths.get("www/error/", ex.getErrorCode() + ".html").toAbsolutePath().normalize();
+            Path errorFilePath = Paths.get(ERROR_FILES_PATH, ex.getErrorCode() + ".html").toAbsolutePath().normalize();
             File file = new File(errorFilePath.toString());
             if (file.exists()) {
-                loggerService.info("Generating error response...");
-                Map<String, String> headers = generateResponseHeaders();
-                appendFileHeaders(headers, file);
-                byte[] headerBytes = formatHeaders(ResponseCode.resolveResponseCode(ex.getErrorCode()), headers).getBytes();
+                Map<String, String> headers = generateResponseHeaders(file);
+                ResponseCode responseCode = ResponseCode.resolveResponseCode(ex.getErrorCode());
+                byte[] headerBytes = formatHeaders(responseCode, headers).getBytes();
                 oi.write(headerBytes, 0, headerBytes.length);
-                oi.flush();
                 if (ex.getRequestMethod() != RequestMethod.HEAD) {
                     FileInputStream fileInputStream = new FileInputStream(file);
                     oi.write(fileInputStream.readAllBytes(), 0, (int) file.length());
-                    oi.flush();
+                    loggerService.info("Response Code: [" + responseCode.getCode() + "]");
                 }
+                oi.flush();
             } else {
                 loggerService.error("Error page does not exist [" + errorFilePath + "]");
             }
