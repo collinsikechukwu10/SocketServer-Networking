@@ -13,7 +13,7 @@ This project features a Socket Server for handling simple http request methods
 ### Run Code
 
 ~~~
-$ cd CS5001-p3-networking/src/
+$ cd SocketServer-Networking/src/
 $ javac *.java
 $ java WebServerMain [RESOURCE_PATH] [PORT] e.g java WebServerMain "../Resources/www" 8006
 ~~~
@@ -21,6 +21,6 @@ $ java WebServerMain [RESOURCE_PATH] [PORT] e.g java WebServerMain "../Resources
 ### To run tests (Using St Andrews stacscheck)
 
 ~~~
-$ cd CS5001-p3-networking/
+$ cd SocketServer-Networking/
 $ stacscheck ./Tests
 ~~~
